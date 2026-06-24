@@ -1,0 +1,27 @@
+{
+  "short_name": "EchoScribe",
+  "name": "EchoScribe — Adaptive Voice Assistant",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "index.html",
+  "background_color": "#FAF7F2",
+  "theme_color": "#E76F51",
+  "display": "standalone",
+  "orientation": "portrait"
+}
