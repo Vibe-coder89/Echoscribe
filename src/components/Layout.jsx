@@ -111,6 +111,10 @@ export const Layout = ({ children }) => {
     { to: '/rehab', label: 'Rehabilitation', icon: Activity },
   ];
 
+  const handleLinkClick = () => {
+    setMobileMenuOpen(false);
+  };
+
   if (location.pathname === '/direct-call') {
     return <>{children}</>;
   }
