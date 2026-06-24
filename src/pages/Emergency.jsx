@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   Phone,
-  Heart,
-  HelpCircle,
   ShieldAlert,
   X,
   Volume2,
@@ -14,7 +12,11 @@ import {
   Edit,
   CheckCircle,
   Copy,
-  Info
+  Info,
+  ArrowLeft,
+  Settings,
+  Heart,
+  HelpCircle
 } from 'lucide-react';
 
 const COUNTRY_CODES = {
@@ -25,60 +27,19 @@ const COUNTRY_CODES = {
   AU: { name: "Australia", code: "+61", pattern: /^4\d{8}$|^\d{9}$/, placeholder: "412345678 (9 digits)" }
 };
 
-const EMERGENCY_ACTIONS = [
-  {
-    id: 'em_medical',
-    title: 'Medical Help',
-    subtitle: 'Alert ambulance and doctor',
-    speechText: 'Emergency: I require immediate medical help.',
-    icon: Heart,
-    color: '#D90429',
-    bgColor: 'rgba(217, 4, 41, 0.1)'
-  },
-  {
-    id: 'em_family',
-    title: 'Call Family',
-    subtitle: 'Notify primary caregivers',
-    speechText: 'Emergency: Please contact my family immediately.',
-    icon: Phone,
-    color: '#2A9D8F',
-    bgColor: 'rgba(42, 157, 143, 0.1)'
-  },
-  {
-    id: 'em_assistance',
-    title: 'Need Assistance',
-    subtitle: 'Ask for physical support',
-    speechText: 'Attention: I need physical assistance in this room.',
-    icon: HelpCircle,
-    color: '#F4A261',
-    bgColor: 'rgba(244, 162, 97, 0.1)'
-  },
-  {
-    id: 'em_contacts',
-    title: 'Emergency Contacts',
-    subtitle: 'Broadcast GPS coordinates',
-    speechText: 'Attention: Broadcasting my current location to emergency contacts.',
-    icon: ShieldAlert,
-    color: '#E76F51',
-    bgColor: 'rgba(231, 111, 81, 0.1)'
-  }
-];
-
 export const Emergency = () => {
-  const { favorites, toggleFavoritePhrase } = useApp();
-  
-  // App alert state
-  const [activeAlert, setActiveAlert] = useState(null);
-  const [countdown, setCountdown] = useState(5);
-  const [alertSent, setAlertSent] = useState(false);
-  const [gpsSimulated] = useState('37.7749° N, 122.4194° W');
+  const { isInstallable, triggerInstall } = useApp();
 
   // Contact list state
   const [contacts, setContacts] = useState([]);
   const [primaryContactId, setPrimaryContactId] = useState('');
+  const [showManageContacts, setShowManageContacts] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
-  const [showManageContacts, setShowManageContacts] = useState(false);
+  
+  // Toggles for detail view and secondary tactile panel
+  const [showDetails, setShowDetails] = useState(false);
+  const [showTactileAlerts, setShowTactileAlerts] = useState(false);
 
   // Form states
   const [formName, setFormName] = useState('');
@@ -87,7 +48,12 @@ export const Emergency = () => {
   const [formCountry, setFormCountry] = useState('IN');
   const [formNotes, setFormNotes] = useState('');
   const [formError, setFormError] = useState('');
+  
+  // UI states
   const [copiedSuccess, setCopiedSuccess] = useState(false);
+  const [activeAlert, setActiveAlert] = useState(null);
+  const [countdown, setCountdown] = useState(5);
+  const [alertSent, setAlertSent] = useState(false);
 
   // Load contacts from LocalStorage on mount
   useEffect(() => {
@@ -137,9 +103,9 @@ export const Emergency = () => {
 
   const triggerBroadcast = () => {
     setAlertSent(true);
-    speakText(`${activeAlert.speechText}. Location: GPS coordinates broadcasted.`);
+    speakText(`${activeAlert.speechText}. Location coordinates broadcasted.`);
     
-    // Automatically trigger dialer for primary contact on broadcast completion if call is chosen
+    // Automatically trigger dialer for primary contact on broadcast completion if family option
     const primary = contacts.find(c => c.id === primaryContactId);
     if (primary && activeAlert.id === 'em_family') {
       triggerPhoneCall(primary.phone);
@@ -153,14 +119,8 @@ export const Emergency = () => {
     setAlertSent(false);
   };
 
-  // Helper to initiate tel calling
   const triggerPhoneCall = (phoneNumber) => {
-    const isMobile = window.innerWidth <= 1024;
-    if (isMobile) {
-      window.location.href = `tel:${phoneNumber}`;
-    } else {
-      speakText('Calling number. This feature is fully functional on mobile devices.');
-    }
+    window.location.href = `tel:${phoneNumber}`;
   };
 
   const handleCopyNumber = (number) => {
@@ -171,7 +131,6 @@ export const Emergency = () => {
       });
   };
 
-  // Dispatch event so layout floating FAB updates
   const notifyContactsUpdate = () => {
     window.dispatchEvent(new Event('emergency-contacts-updated'));
   };
@@ -202,7 +161,7 @@ export const Emergency = () => {
     }
 
     if (!config.pattern.test(cleaned)) {
-      setFormError(`Invalid number format for ${config.name}. Expected format: ${config.placeholder}`);
+      setFormError(`Invalid format for ${config.name}. Expected format: ${config.placeholder}`);
       return;
     }
 
@@ -284,563 +243,656 @@ export const Emergency = () => {
     localStorage.setItem('primaryEmergencyContactId', contactId);
     setPrimaryContactId(contactId);
     notifyContactsUpdate();
-    speakText('Primary emergency contact changed.');
+    speakText('Primary contact updated.');
   };
 
   const primaryContact = contacts.find(c => c.id === primaryContactId);
-  const isMobile = window.innerWidth <= 1024;
+
+  const EMERGENCY_ACTIONS = [
+    {
+      id: 'em_medical',
+      title: 'Medical Help',
+      subtitle: 'Alert ambulance and doctor',
+      speechText: 'Emergency: I require immediate medical help.',
+      icon: Heart,
+      color: '#DC2626',
+      bgColor: 'rgba(220, 38, 38, 0.1)'
+    },
+    {
+      id: 'em_family',
+      title: 'Call Family',
+      subtitle: 'Notify primary caregivers',
+      speechText: 'Emergency: Please contact my family immediately.',
+      icon: Phone,
+      color: '#2A9D8F',
+      bgColor: 'rgba(42, 157, 143, 0.1)'
+    },
+    {
+      id: 'em_assistance',
+      title: 'Need Assistance',
+      subtitle: 'Ask for physical support',
+      speechText: 'Attention: I need physical assistance in this room.',
+      icon: HelpCircle,
+      color: '#F4A261',
+      bgColor: 'rgba(244, 162, 97, 0.1)'
+    },
+    {
+      id: 'em_contacts',
+      title: 'Emergency Contacts',
+      subtitle: 'Broadcast GPS coordinates',
+      speechText: 'Attention: Broadcasting my current location to emergency contacts.',
+      icon: ShieldAlert,
+      color: '#E76F51',
+      bgColor: 'rgba(231, 111, 81, 0.1)'
+    }
+  ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', maxWidth: '600px', margin: '0 auto', paddingBottom: '3rem' }}>
+      
+      {/* QUICK EMERGENCY SCREEN (DEFAULT) */}
+      {!showManageContacts && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }} className="animate-fade-in">
+          <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+            <div style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(220, 38, 38, 0.1)',
+              color: '#DC2626',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '1rem'
+            }}>
+              <ShieldAlert size={36} />
+            </div>
+            <h1 style={{ fontSize: 'var(--font-3xl)', fontFamily: 'var(--font-display)', color: 'var(--color-text)', fontWeight: 800, margin: '0 0 0.5rem 0' }}>
+              Emergency Safety Hub
+            </h1>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-sm)', margin: 0 }}>
+              Instantly contact primary care and open system dialer.
+            </p>
+          </div>
 
-      {/* Header */}
-      <section style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h1 style={{ fontSize: 'var(--font-3xl)', fontFamily: 'var(--font-display)', marginBottom: '0.5rem' }}>
-            Emergency Communication Mode
-          </h1>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-md)' }}>
-            High-contrast, large-target triggers for rapid calling, care notifications, and location broadcasting.
-          </p>
-        </div>
-        {contacts.length > 0 && !isAdding && (
-          <button 
-            onClick={() => setShowManageContacts(!showManageContacts)} 
-            className="btn btn-secondary flex align-center gap-2"
-            style={{ padding: '0.75rem 1.25rem', fontSize: 'var(--font-sm)', fontWeight: 'bold' }}
-          >
-            {showManageContacts ? 'Show Alerts Grid' : 'Manage Contacts'}
-          </button>
-        )}
-      </section>
-
-      {/* SETUP FLOW: NO CONTACTS SAVED */}
-      {contacts.length === 0 ? (
-        <section className="card" style={{ borderLeft: '4px solid var(--color-danger)', padding: '2.5rem', textAlign: 'center', backgroundColor: 'var(--bg-secondary)' }}>
-          <AlertTriangle size={48} style={{ color: 'var(--color-danger)', marginBottom: '1rem' }} />
-          <h2 style={{ fontSize: 'var(--font-2xl)', fontFamily: 'var(--font-display)', marginBottom: '0.5rem' }}>
-            Emergency Calling Not Enabled
-          </h2>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-md)', maxWidth: '600px', margin: '0 auto 1.5rem auto' }}>
-            Add your emergency contact to enable emergency calling, device dialer triggers, and quick access.
-          </p>
-          
-          <button 
-            onClick={() => setIsAdding(true)} 
-            className="btn btn-primary flex align-center justify-center gap-2"
-            style={{ margin: '0 auto', padding: '1rem 2rem', fontSize: 'var(--font-md)', fontWeight: 'bold' }}
-          >
-            <UserPlus size={20} /> Add Emergency Contact
-          </button>
-        </section>
-      ) : null}
-
-      {/* FORM OVERLAY FOR ADDING/EDITING CONTACTS */}
-      {isAdding && (
-        <section className="card animate-fade-in" style={{ padding: '2rem', border: '2px solid var(--color-primary)' }}>
-          <h2 style={{ fontSize: 'var(--font-xl)', fontFamily: 'var(--font-display)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <UserPlus style={{ color: 'var(--color-primary)' }} />
-            {editingContact ? 'Edit Emergency Contact' : 'Add New Emergency Contact'}
-          </h2>
-          
-          <form onSubmit={handleSaveContact} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {formError && (
-              <div style={{ padding: '0.75rem 1rem', backgroundColor: 'rgba(217, 4, 41, 0.1)', color: 'var(--color-danger)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--font-sm)', fontWeight: 600 }}>
-                {formError}
-              </div>
-            )}
-
-            <div className="grid grid-2 gap-4">
-              <div>
-                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Contact Name *</label>
-                <input 
-                  type="text" 
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder="e.g. Mom"
-                  style={{ width: '100%', padding: '0.75rem', fontSize: 'var(--font-sm)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
-                />
-              </div>
+          {primaryContact ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               
-              <div>
-                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Relationship *</label>
-                <input 
-                  type="text" 
-                  value={formRelationship}
-                  onChange={(e) => setFormRelationship(e.target.value)}
-                  placeholder="e.g. Mother, Spouse, Friend"
-                  style={{ width: '100%', padding: '0.75rem', fontSize: 'var(--font-sm)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-2 gap-4">
-              <div>
-                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Country & Prefix *</label>
-                <select 
-                  value={formCountry}
-                  onChange={(e) => setFormCountry(e.target.value)}
-                  style={{ width: '100%', padding: '0.75rem', fontSize: 'var(--font-sm)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', backgroundColor: 'var(--bg-card)' }}
-                >
-                  {Object.entries(COUNTRY_CODES).map(([key, data]) => (
-                    <option key={key} value={key}>{data.name} ({data.code})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Phone Number *</label>
-                <input 
-                  type="text" 
-                  value={formPhone}
-                  onChange={(e) => setFormPhone(e.target.value)}
-                  placeholder={COUNTRY_CODES[formCountry].placeholder}
-                  style={{ width: '100%', padding: '0.75rem', fontSize: 'var(--font-sm)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: 'var(--font-xs)', fontWeight: 'bold', marginBottom: '0.5rem' }}>Optional Notes</label>
-              <textarea 
-                value={formNotes}
-                onChange={(e) => setFormNotes(e.target.value)}
-                placeholder="e.g. Medical history, home address, medication needs..."
-                rows="3"
-                style={{ width: '100%', padding: '0.75rem', fontSize: 'var(--font-sm)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
-              />
-            </div>
-
-            <div className="flex gap-2" style={{ marginTop: '0.5rem' }}>
-              <button type="submit" className="btn btn-primary" style={{ padding: '0.85rem 2rem', fontWeight: 'bold' }}>
-                Save Contact
-              </button>
-              <button 
-                type="button" 
-                onClick={() => {
-                  setIsAdding(false);
-                  setEditingContact(null);
-                  setFormError('');
-                }} 
-                className="btn btn-secondary" 
-                style={{ padding: '0.85rem 1.5rem' }}
+              {/* BUTTON 1: CALL PRIMARY CONTACT (GIANT BUTTON) */}
+              <button
+                onClick={() => triggerPhoneCall(primaryContact.phone)}
+                className="btn pulse-call"
+                style={{
+                  width: '100%',
+                  height: '110px',
+                  backgroundColor: '#DC2626',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: 'var(--radius-lg)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '1rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 6px 20px rgba(220, 38, 38, 0.3)',
+                  transition: 'transform 0.1s ease',
+                  padding: '1.5rem',
+                  textAlign: 'left'
+                }}
               >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </section>
-      )}
-
-      {/* PRIMARY EMERGENCY CONTACT DISPLAY CARD */}
-      {contacts.length > 0 && !isAdding && !showManageContacts && (
-        <section className="grid grid-2 gap-4">
-          
-          {/* Primary Contact Details */}
-          <div className="card flex flex-col justify-between" style={{ border: '2px solid var(--color-accent)', padding: '2rem', backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius-lg)' }}>
-            <div>
-              <span style={{ fontSize: 'var(--font-xs)', fontWeight: 'bold', color: 'var(--color-accent)', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>
-                Primary Emergency Contact
-              </span>
-              {primaryContact ? (
-                <>
-                  <h2 style={{ fontSize: 'var(--font-3xl)', fontFamily: 'var(--font-display)', fontWeight: 800, margin: '0 0 0.5rem 0' }}>
+                <div style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <Phone size={32} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: 'var(--font-xs)', textTransform: 'uppercase', fontWeight: 'bold', opacity: 0.95, letterSpacing: '0.5px' }}>
+                    Call Primary Contact
+                  </span>
+                  <span style={{ fontSize: 'var(--font-xl)', fontWeight: 800, fontFamily: 'var(--font-display)', lineHeight: '1.2', marginTop: '2px' }}>
                     {primaryContact.name}
-                  </h2>
-                  <div style={{ display: 'inline-block', backgroundColor: 'rgba(231, 111, 81, 0.08)', color: 'var(--color-primary)', padding: '4px 12px', borderRadius: 'var(--radius-full)', fontSize: 'var(--font-xs)', fontWeight: 'bold', marginBottom: '1rem' }}>
-                    {primaryContact.relationship}
-                  </div>
-                  
-                  <div style={{ fontSize: 'var(--font-xl)', fontWeight: 'bold', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                    <Phone size={20} style={{ color: 'var(--color-accent)' }} />
+                  </span>
+                  <span style={{ fontSize: 'var(--font-sm)', opacity: 0.9, marginTop: '2px' }}>
                     {primaryContact.phone}
-                  </div>
-                  
-                  {primaryContact.notes && (
-                    <div style={{ display: 'flex', gap: '0.5rem', backgroundColor: 'var(--bg-secondary)', padding: '0.85rem', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', borderLeft: '3px solid var(--color-accent)' }}>
-                      <Info size={16} style={{ flexShrink: 0, color: 'var(--color-accent)' }} />
-                      <div>
-                        <strong>Notes:</strong> {primaryContact.notes}
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <p style={{ fontStyle: 'italic', color: 'var(--color-text-muted)' }}>No primary contact selected.</p>
-              )}
-            </div>
-
-            {primaryContact && (
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1.5rem', borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem' }}>
-                <button 
-                  onClick={() => triggerPhoneCall(primaryContact.phone)} 
-                  className="btn btn-primary flex align-center justify-center gap-2 pulse" 
-                  style={{ flex: 2, height: '54px', fontSize: 'var(--font-md)', fontWeight: 'bold', backgroundColor: 'var(--color-accent)', borderColor: 'var(--color-accent)' }}
-                >
-                  <Phone size={20} /> CALL NOW
-                </button>
-                <button 
-                  onClick={() => handleEditContactClick(primaryContact)} 
-                  className="btn btn-secondary flex align-center justify-center" 
-                  style={{ flex: 1, height: '54px' }}
-                >
-                  Edit Contact
-                </button>
-                <button 
-                  onClick={() => setShowManageContacts(true)} 
-                  className="btn btn-secondary" 
-                  style={{ height: '54px', padding: '0 1rem' }}
-                >
-                  Change Contact
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Desktop helper & QR Code Call functionality */}
-          <div className="card flex flex-col justify-center align-center" style={{ padding: '2rem', textAlign: 'center', backgroundColor: 'var(--bg-secondary)' }}>
-            {!isMobile && primaryContact ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-primary)', fontWeight: 'bold', fontSize: 'var(--font-sm)' }}>
-                  <Info size={16} /> Desktop Calling Assistant
+                  </span>
                 </div>
-                <p style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', maxWidth: '280px', margin: 0 }}>
-                  This feature triggers native dialing on mobile. Scan this QR code or copy the number to dial instantly:
-                </p>
-                
-                {/* Generates a functional Tel Protocol QR Code */}
-                <div style={{ backgroundColor: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid var(--color-border)', margin: '0.5rem 0' }}>
-                  <img 
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=tel:${encodeURIComponent(primaryContact.phone)}`} 
-                    alt="Scan to call emergency number" 
-                    style={{ width: '130px', height: '130px', display: 'block' }}
-                  />
-                </div>
+              </button>
 
-                <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
-                  <button 
-                    onClick={() => handleCopyNumber(primaryContact.phone)} 
-                    className="btn btn-primary flex align-center justify-center gap-1"
-                    style={{ fontSize: 'var(--font-xs)', padding: '6px 12px', flex: 1 }}
-                  >
-                    {copiedSuccess ? <Check size={14} /> : <Copy size={14} />}
-                    {copiedSuccess ? 'Copied!' : 'Copy Number'}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', color: 'var(--color-text-muted)' }}>
-                <Phone size={48} className="pulse" style={{ color: 'var(--color-accent)' }} />
-                <h3 style={{ fontSize: 'var(--font-md)', fontWeight: 'bold', color: 'var(--color-text)' }}>Mobile Call Link Enabled</h3>
-                <p style={{ fontSize: 'var(--font-xs)', maxWidth: '300px', margin: 0 }}>
-                  Pressing **Call Now** on your mobile device launches the system dialer with the emergency prefix prepended automatically.
-                </p>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* MANAGE CONTACTS TAB VIEW */}
-      {showManageContacts && !isAdding && (
-        <section className="card" style={{ padding: '2rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
-            <h2 style={{ fontSize: 'var(--font-xl)', fontFamily: 'var(--font-display)', margin: 0 }}>
-              All Emergency Contacts ({contacts.length})
-            </h2>
-            <button 
-              onClick={() => setIsAdding(true)} 
-              className="btn btn-primary flex align-center gap-1"
-              style={{ fontSize: 'var(--font-xs)', padding: '6px 12px' }}
-            >
-              <UserPlus size={14} /> Add Contact
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {contacts.map((contact) => {
-              const isPrimary = contact.id === primaryContactId;
-              return (
-                <div 
-                  key={contact.id} 
-                  className="flex justify-between align-center" 
-                  style={{
-                    padding: '1rem',
-                    borderRadius: 'var(--radius-md)',
-                    border: isPrimary ? '2px solid var(--color-accent)' : '1px solid var(--color-border)',
-                    backgroundColor: isPrimary ? 'rgba(231, 111, 81, 0.03)' : 'var(--bg-secondary)',
-                    gap: '1rem',
-                    flexWrap: 'wrap'
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: '180px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontWeight: 'bold', fontSize: 'var(--font-md)' }}>{contact.name}</span>
-                      <span className="badge badge-primary" style={{ fontSize: '9px', padding: '2px 6px', textTransform: 'capitalize' }}>
-                        {contact.relationship}
-                      </span>
-                      {isPrimary && (
-                        <span className="badge badge-success" style={{ fontSize: '9px', padding: '2px 6px' }}>
-                          Primary Contact
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <strong>Phone:</strong> {contact.phone}
-                    </div>
-                    {contact.notes && (
-                      <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '4px', fontStyle: 'italic' }}>
-                        "{contact.notes}"
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-1" style={{ flexWrap: 'wrap' }}>
-                    {!isPrimary && (
-                      <button 
-                        onClick={() => handleSetPrimary(contact.id)} 
-                        className="btn btn-secondary" 
-                        style={{ fontSize: '11px', padding: '4px 8px' }}
-                      >
-                        Set Primary
-                      </button>
-                    )}
-                    <button 
-                      onClick={() => handleEditContactClick(contact)} 
-                      className="btn" 
-                      style={{ padding: '6px', cursor: 'pointer', background: 'none', border: 'none', color: 'var(--color-primary)' }}
-                      title="Edit Contact"
-                    >
-                      <Edit size={16} />
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteContact(contact.id)} 
-                      className="btn" 
-                      style={{ padding: '6px', cursor: 'pointer', background: 'none', border: 'none', color: 'var(--color-danger)' }}
-                      title="Delete Contact"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <button 
-            onClick={() => setShowManageContacts(false)} 
-            className="btn btn-secondary" 
-            style={{ width: '100%', marginTop: '1.5rem' }}
-          >
-            Return to Action Dashboard
-          </button>
-        </section>
-      )}
-
-      {/* Grid of Emergency Action Buttons */}
-      {!isAdding && !showManageContacts && (
-        <section>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-            <h2 style={{ fontSize: 'var(--font-lg)', fontFamily: 'var(--font-display)', margin: 0 }}>
-              Tactile Action Panels
-            </h2>
-            {contacts.length === 0 && (
-              <span style={{ fontSize: 'var(--font-xs)', color: 'var(--color-danger)', fontWeight: 'bold' }}>
-                * Add contact to enable actions
-              </span>
-            )}
-          </div>
-
-          {/* Alert Sequence Overlay */}
-          {activeAlert && (
-            <div
-              className="card"
-              style={{
-                backgroundColor: alertSent ? 'rgba(217, 4, 41, 0.05)' : 'rgba(244, 162, 97, 0.05)',
-                borderColor: alertSent ? '#D90429' : 'var(--color-secondary)',
-                padding: '2rem',
-                textAlign: 'center',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '1rem',
-                marginBottom: '1.5rem',
-                animation: 'fadeIn 0.3s'
-              }}
-            >
-              {alertSent ? (
-                <>
-                  <div style={{ color: '#D90429', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold', fontSize: 'var(--font-xl)' }}>
-                    <AlertTriangle size={28} /> EMERGENCY ALERTS BROADCASTED
-                  </div>
-                  <p style={{ fontSize: 'var(--font-md)', color: 'var(--color-text)', maxWidth: '600px' }}>
-                    Emergency broadcast triggered: <strong>"{activeAlert.speechText}"</strong>.
-                  </p>
-                  {primaryContact && (
-                    <div style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text)', padding: '6px 16px', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}>
-                      Notifying Primary caregiver: <strong>{primaryContact.name} ({primaryContact.phone})</strong>
-                    </div>
-                  )}
-                  <button onClick={handleCancelAlert} className="btn btn-secondary">
-                    Reset Alert System
-                  </button>
-                </>
-              ) : (
-                <>
-                  <h2 style={{ fontSize: 'var(--font-lg)', fontFamily: 'var(--font-display)' }}>
-                    Broadcasting {activeAlert.title} in...
-                  </h2>
-                  <div style={{
-                    fontSize: '4.5rem',
-                    fontWeight: '800',
-                    color: activeAlert.color,
-                    lineHeight: '1',
-                    fontFamily: 'var(--font-display)',
-                    margin: '0.5rem 0'
-                  }} className="pulse">
-                    {countdown}
-                  </div>
-                  <p style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)' }}>
-                    Synthesizer will read: "{activeAlert.speechText}"
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={triggerBroadcast}
-                      className="btn btn-primary"
-                      style={{ backgroundColor: activeAlert.color }}
-                    >
-                      Send Now
-                    </button>
-                    <button
-                      onClick={handleCancelAlert}
-                      className="btn btn-secondary"
-                      style={{ borderColor: activeAlert.color, color: activeAlert.color }}
-                    >
-                      <X size={16} /> Cancel Alert
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          <div className="grid grid-2 gap-4">
-            {EMERGENCY_ACTIONS.map((action) => {
-              const Icon = action.icon;
-              const disabled = contacts.length === 0 || (!!activeAlert && !alertSent);
-              return (
+              {/* BUTTON 2: VIEW CONTACT DETAILS (ACCORDION / PANEL TOGGLE) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <button
-                  key={action.id}
-                  onClick={() => handleTriggerAlert(action)}
-                  disabled={disabled}
-                  className="card flex align-center gap-4"
+                  onClick={() => setShowDetails(!showDetails)}
+                  className="btn btn-secondary"
                   style={{
-                    border: `2px solid ${disabled ? 'var(--color-border)' : action.color}`,
-                    backgroundColor: 'var(--bg-card)',
-                    padding: '2.5rem 2rem',
-                    borderRadius: 'var(--radius-lg)',
-                    textAlign: 'left',
-                    cursor: disabled ? 'not-allowed' : 'pointer',
                     width: '100%',
-                    display: 'flex',
-                    justifyContent: 'flex-start',
-                    boxShadow: 'var(--shadow-sm)',
-                    opacity: disabled ? 0.5 : 1
-                  }}
-                >
-                  <div style={{
-                    width: '70px',
-                    height: '70px',
-                    borderRadius: '16px',
-                    backgroundColor: disabled ? 'var(--bg-secondary)' : action.bgColor,
-                    color: disabled ? 'var(--color-text-muted)' : action.color,
+                    height: '60px',
+                    fontSize: 'var(--font-md)',
+                    fontWeight: 'bold',
+                    borderRadius: 'var(--radius-md)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    <Icon size={36} />
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <h2 style={{ fontSize: 'var(--font-xl)', color: 'var(--color-text)', fontFamily: 'var(--font-display)', fontWeight: 800 }}>
-                      {action.title}
-                    </h2>
-                    <p style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-muted)' }}>
-                      {action.subtitle}
-                    </p>
-                  </div>
+                    gap: '0.5rem',
+                    backgroundColor: 'var(--bg-card)',
+                    border: '2px solid var(--color-border)'
+                  }}
+                >
+                  <Info size={20} />
+                  {showDetails ? 'Hide Contact Info' : 'View Contact Info'}
                 </button>
-              );
-            })}
-          </div>
-        </section>
-      )}
 
-      {/* Favorite Quick Phrases Section */}
-      {!isAdding && !showManageContacts && (
-        <section className="card">
-          <h2 style={{ fontSize: 'var(--font-lg)', fontFamily: 'var(--font-display)', marginBottom: '0.25rem' }}>
-            Quick-Access Common Phrases
-          </h2>
-          <p style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>
-            Frequently used items for fast spoken feedback. Click to synthesize speech output instantly.
-          </p>
-
-          {favorites.length === 0 ? (
-            <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 'var(--font-xs)' }}>
-              No favorites saved. Toggle star icons on Live Translation page to build this dashboard.
-            </div>
-          ) : (
-            <div className="grid grid-2 gap-2">
-              {favorites.map((phrase, index) => (
-                <div
-                  key={index}
-                  className="flex justify-between align-center"
-                  style={{
-                    padding: '0.75rem 1rem',
+                {showDetails && (
+                  <div className="card animate-fade-in" style={{
+                    padding: '1.5rem',
                     borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--color-border)',
                     backgroundColor: 'var(--bg-secondary)',
-                    gap: '8px'
-                  }}
-                >
-                  <span style={{ fontWeight: 600, fontSize: 'var(--font-sm)', color: 'var(--color-text)' }}>
-                    "{phrase}"
-                  </span>
-
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => speakText(phrase)}
-                      className="btn btn-secondary"
-                      style={{ padding: '6px 12px', fontSize: 'var(--font-xs)', borderRadius: 'var(--radius-sm)' }}
-                    >
-                      <Volume2 size={12} /> Speak
-                    </button>
-                    <button
-                      onClick={() => toggleFavoritePhrase(phrase)}
-                      className="btn"
-                      style={{ padding: '4px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-primary)' }}
-                    >
-                      ★
-                    </button>
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.85rem'
+                  }}>
+                    <div className="grid grid-2 gap-4">
+                      <div>
+                        <span style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Relationship</span>
+                        <span style={{ fontSize: 'var(--font-md)', fontWeight: 600 }}>{primaryContact.relationship}</span>
+                      </div>
+                      <div>
+                        <span style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Country</span>
+                        <span style={{ fontSize: 'var(--font-md)', fontWeight: 600 }}>{COUNTRY_CODES[primaryContact.country]?.name || primaryContact.country}</span>
+                      </div>
+                    </div>
+                    {primaryContact.notes && (
+                      <div>
+                        <span style={{ display: 'block', fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Medical / Helper Notes</span>
+                        <p style={{ fontSize: 'var(--font-sm)', margin: '4px 0 0 0', color: 'var(--color-text)', lineHeight: '1.4' }}>{primaryContact.notes}</p>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      <button
+                        onClick={() => handleCopyNumber(primaryContact.phone)}
+                        className="btn btn-secondary flex align-center justify-center gap-1"
+                        style={{ fontSize: 'var(--font-xs)', padding: '8px 12px', flex: 1, backgroundColor: 'var(--bg-card)' }}
+                      >
+                        {copiedSuccess ? <Check size={14} style={{ color: 'var(--color-success)' }} /> : <Copy size={14} />}
+                        {copiedSuccess ? 'Copied!' : 'Copy Phone Number'}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )}
+              </div>
+
+              {/* BUTTON 3: CHANGE CONTACT */}
+              <button
+                onClick={() => setShowManageContacts(true)}
+                className="btn btn-secondary"
+                style={{
+                  width: '100%',
+                  height: '60px',
+                  fontSize: 'var(--font-md)',
+                  fontWeight: 'bold',
+                  borderRadius: 'var(--radius-md)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  backgroundColor: 'var(--bg-card)',
+                  border: '2px solid var(--color-border)'
+                }}
+              >
+                <Settings size={20} />
+                Change Contact
+              </button>
+
+            </div>
+          ) : (
+            <div className="card" style={{ borderLeft: '4px solid #DC2626', padding: '2rem', textAlign: 'center', backgroundColor: 'var(--bg-secondary)' }}>
+              <AlertTriangle size={48} style={{ color: '#DC2626', marginBottom: '1rem' }} />
+              <h2 style={{ fontSize: 'var(--font-xl)', fontFamily: 'var(--font-display)', marginBottom: '0.5rem' }}>
+                No Emergency Contact Configured
+              </h2>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-sm)', marginBottom: '1.5rem' }}>
+                You must add at least one emergency contact to enable emergency calling features.
+              </p>
+              
+              <button 
+                onClick={() => {
+                  setShowManageContacts(true);
+                  setIsAdding(true);
+                }} 
+                className="btn btn-primary flex align-center justify-center gap-2"
+                style={{ margin: '0 auto', padding: '1rem 2rem', fontSize: 'var(--font-md)', fontWeight: 'bold', backgroundColor: '#DC2626', borderColor: '#DC2626' }}
+              >
+                <UserPlus size={20} /> Set Up Emergency Contacts
+              </button>
             </div>
           )}
-        </section>
+
+          {/* SECONDARY TACTILE ALERTS TOGGLE FOR SPEECH OUTS */}
+          {primaryContact && (
+            <div style={{ marginTop: '0.5rem' }}>
+              <button 
+                onClick={() => setShowTactileAlerts(!showTactileAlerts)}
+                style={{
+                  width: '100%',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--color-primary)',
+                  fontWeight: 'bold',
+                  fontSize: 'var(--font-sm)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '4px'
+                }}
+              >
+                {showTactileAlerts ? 'Hide Speech Alerts' : 'Show Tactile Speech Alerts'}
+              </button>
+
+              {showTactileAlerts && (
+                <div className="card animate-fade-in" style={{ marginTop: '1rem', padding: '1.5rem', backgroundColor: 'var(--bg-card)' }}>
+                  
+                  {activeAlert && (
+                    <div style={{
+                      backgroundColor: alertSent ? 'rgba(42, 157, 143, 0.05)' : 'rgba(220, 38, 38, 0.05)',
+                      border: `2px solid ${alertSent ? 'var(--color-success)' : '#DC2626'}`,
+                      borderRadius: 'var(--radius-md)',
+                      padding: '1rem',
+                      textAlign: 'center',
+                      marginBottom: '1rem'
+                    }}>
+                      {alertSent ? (
+                        <>
+                          <div style={{ color: 'var(--color-success)', fontWeight: 'bold', fontSize: 'var(--font-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                            <CheckCircle size={18} /> SPEECH ALERT BROADCASTED
+                          </div>
+                          <p style={{ fontSize: '11px', color: 'var(--color-text-muted)', margin: '4px 0 8px 0' }}>
+                            "{activeAlert.speechText}"
+                          </p>
+                          <button onClick={handleCancelAlert} className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: '10px' }}>Reset</button>
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ fontWeight: 'bold', fontSize: 'var(--font-sm)' }}>Broadcasting alert in:</div>
+                          <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#DC2626', margin: '4px 0' }} className="pulse-call">{countdown}</div>
+                          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                            <button onClick={triggerBroadcast} className="btn btn-primary" style={{ padding: '4px 12px', fontSize: '10px', backgroundColor: '#DC2626', borderColor: '#DC2626' }}>Send Now</button>
+                            <button onClick={handleCancelAlert} className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: '10px' }}>Cancel</button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="grid grid-2 gap-2">
+                    {EMERGENCY_ACTIONS.map(action => {
+                      const Icon = action.icon;
+                      return (
+                        <button
+                          key={action.id}
+                          onClick={() => handleTriggerAlert(action)}
+                          style={{
+                            padding: '1rem',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--color-border)',
+                            backgroundColor: 'var(--bg-secondary)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            cursor: 'pointer',
+                            textAlign: 'center'
+                          }}
+                        >
+                          <Icon size={20} style={{ color: action.color }} />
+                          <span style={{ fontSize: '11px', fontWeight: 'bold' }}>{action.title}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* INSTALLATION & SHORTCUT INSTRUCTIONS */}
+          <div className="card" style={{ padding: '1.5rem', backgroundColor: 'var(--bg-card)', border: '1px solid var(--color-border)' }}>
+            <h3 style={{ fontSize: 'var(--font-sm)', fontWeight: 'bold', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.35rem', margin: '0 0 0.5rem 0' }}>
+              <Info size={16} style={{ color: 'var(--color-primary)' }} />
+              Home Screen Shortcut Support
+            </h3>
+            <p style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', lineHeight: '1.5', margin: '0 0 1rem 0' }}>
+              EchoScribe supports deep-link shortcuts. After installing the app, you can add an <strong>Emergency Link</strong> directly to your device home screen for instant one-tap access.
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {isInstallable && (
+                <button
+                  onClick={triggerInstall}
+                  className="btn btn-primary pulse-call"
+                  style={{
+                    width: '100%',
+                    height: '45px',
+                    fontWeight: 'bold',
+                    fontSize: 'var(--font-xs)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    backgroundColor: 'var(--color-primary)',
+                    borderColor: 'var(--color-primary)'
+                  }}
+                >
+                  Install EchoScribe PWA
+                </button>
+              )}
+              <div style={{
+                backgroundColor: 'var(--bg-secondary)',
+                padding: '0.75rem',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '11px',
+                color: 'var(--color-text-muted)',
+                lineHeight: '1.4'
+              }}>
+                <strong>How to add:</strong> Long-press the EchoScribe app icon on your home screen and drag the <strong>"Emergency"</strong> option onto your home screen.
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
+      {/* CONTACT MANAGEMENT SCREEN (TOGGLED) */}
+      {showManageContacts && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }} className="animate-fade-in">
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button
+              onClick={() => {
+                setShowManageContacts(false);
+                setIsAdding(false);
+                setEditingContact(null);
+                setFormError('');
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '4px',
+                color: 'var(--color-text)'
+              }}
+              title="Back"
+            >
+              <ArrowLeft size={24} />
+            </button>
+            <h1 style={{ fontSize: 'var(--font-xl)', fontFamily: 'var(--font-display)', fontWeight: 800, margin: 0 }}>
+              Manage Contacts
+            </h1>
+          </div>
+
+          {/* ADD/EDIT CONTACT FORM OVERLAY */}
+          {isAdding && (
+            <div className="card" style={{ padding: '1.5rem', border: '2px solid var(--color-primary)' }}>
+              <h2 style={{ fontSize: 'var(--font-md)', fontWeight: 'bold', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <UserPlus size={18} style={{ color: 'var(--color-primary)' }} />
+                {editingContact ? 'Edit Contact' : 'Add Emergency Contact'}
+              </h2>
+              
+              <form onSubmit={handleSaveContact} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {formError && (
+                  <div style={{ padding: '0.5rem 0.75rem', backgroundColor: 'rgba(220, 38, 38, 0.1)', color: '#DC2626', borderRadius: 'var(--radius-sm)', fontSize: '11px', fontWeight: 'bold' }}>
+                    {formError}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}>Name *</label>
+                    <input 
+                      type="text" 
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      placeholder="e.g. John Doe"
+                      style={{ width: '100%', padding: '0.6rem', fontSize: 'var(--font-sm)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}>Relationship *</label>
+                    <input 
+                      type="text" 
+                      value={formRelationship}
+                      onChange={(e) => setFormRelationship(e.target.value)}
+                      placeholder="e.g. Spouse, Brother, Doctor"
+                      style={{ width: '100%', padding: '0.6rem', fontSize: 'var(--font-sm)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-2 gap-2">
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}>Country *</label>
+                      <select 
+                        value={formCountry}
+                        onChange={(e) => setFormCountry(e.target.value)}
+                        style={{ width: '100%', padding: '0.6rem', fontSize: 'var(--font-sm)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)', backgroundColor: 'var(--bg-card)' }}
+                      >
+                        {Object.entries(COUNTRY_CODES).map(([key, data]) => (
+                          <option key={key} value={key}>{data.name} ({data.code})</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}>Phone Number *</label>
+                      <input 
+                        type="tel" 
+                        value={formPhone}
+                        onChange={(e) => setFormPhone(e.target.value)}
+                        placeholder={COUNTRY_CODES[formCountry].placeholder}
+                        style={{ width: '100%', padding: '0.6rem', fontSize: 'var(--font-sm)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', marginBottom: '4px' }}>Optional Notes</label>
+                    <textarea 
+                      value={formNotes}
+                      onChange={(e) => setFormNotes(e.target.value)}
+                      placeholder="Medical conditions, address, special directions..."
+                      rows="2"
+                      style={{ width: '100%', padding: '0.6rem', fontSize: 'var(--font-sm)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  <button type="submit" className="btn btn-primary" style={{ flex: 1, padding: '0.6rem' }}>Save</button>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setIsAdding(false);
+                      setEditingContact(null);
+                      setFormError('');
+                    }}
+                    className="btn btn-secondary"
+                    style={{ padding: '0.6rem' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* CONTACTS LIST */}
+          {!isAdding && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              
+              {contacts.length === 0 ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                  No emergency contacts configured yet.
+                </div>
+              ) : (
+                contacts.map((contact) => {
+                  const isPrimary = contact.id === primaryContactId;
+                  return (
+                    <div 
+                      key={contact.id} 
+                      style={{
+                        padding: '1rem',
+                        borderRadius: 'var(--radius-md)',
+                        border: isPrimary ? '2px solid #DC2626' : '1px solid var(--color-border)',
+                        backgroundColor: isPrimary ? 'rgba(220, 38, 38, 0.02)' : 'var(--bg-card)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 'bold', fontSize: 'var(--font-md)' }}>{contact.name}</span>
+                            <span className="badge badge-primary" style={{ fontSize: '9px', padding: '2px 6px', textTransform: 'capitalize' }}>
+                              {contact.relationship}
+                            </span>
+                            {isPrimary && (
+                              <span className="badge" style={{ fontSize: '9px', padding: '2px 6px', backgroundColor: '#DC2626', color: '#FFF' }}>
+                                Primary
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                            {contact.phone} ({COUNTRY_CODES[contact.country]?.name || contact.country})
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.25rem' }}>
+                          <button 
+                            onClick={() => handleEditContactClick(contact)} 
+                            style={{ padding: '6px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text)' }}
+                            title="Edit"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteContact(contact.id)} 
+                            style={{ padding: '6px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)' }}
+                            title="Delete"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {contact.notes && (
+                        <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                          Notes: {contact.notes}
+                        </div>
+                      )}
+
+                      {!isPrimary && (
+                        <button
+                          onClick={() => handleSetPrimary(contact.id)}
+                          className="btn btn-secondary"
+                          style={{
+                            alignSelf: 'flex-start',
+                            fontSize: '11px',
+                            padding: '4px 8px',
+                            marginTop: '0.25rem',
+                            borderRadius: 'var(--radius-sm)'
+                          }}
+                        >
+                          Set as Primary
+                        </button>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+
+              <button
+                onClick={() => setIsAdding(true)}
+                className="btn btn-primary"
+                style={{
+                  width: '100%',
+                  height: '50px',
+                  marginTop: '0.5rem',
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '4px',
+                  backgroundColor: '#DC2626',
+                  borderColor: '#DC2626'
+                }}
+              >
+                <UserPlus size={18} />
+                Add Contact
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowManageContacts(false);
+                }}
+                className="btn btn-secondary"
+                style={{
+                  width: '100%',
+                  height: '50px',
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                Back to Emergency Actions
+              </button>
+            </div>
+          )}
+
+        </div>
+      )}
+
+      {/* Embedded Animations Styling */}
       <style>{`
+        @keyframes pulse-call-btn {
+          0% {
+            box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5), 0 6px 20px rgba(220, 38, 38, 0.2);
+          }
+          70% {
+            box-shadow: 0 0 0 10px rgba(220, 38, 38, 0), 0 6px 20px rgba(220, 38, 38, 0.2);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(220, 38, 38, 0), 0 6px 20px rgba(220, 38, 38, 0.2);
+          }
+        }
+        .pulse-call {
+          animation: pulse-call-btn 2s infinite;
+        }
+        .pulse-call:active {
+          transform: scale(0.97);
+        }
         @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-8px); }
+          from { opacity: 0; transform: translateY(6px); }
           to { opacity: 1; transform: translateY(0); }
         }
         .animate-fade-in {
-          animation: fadeIn 0.3s ease;
+          animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
       `}</style>
+
     </div>
   );
 };

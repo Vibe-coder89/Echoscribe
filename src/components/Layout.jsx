@@ -17,7 +17,8 @@ import {
   Database,
   Download,
   Phone,
-  AlertTriangle
+  AlertTriangle,
+  CheckCircle
 } from 'lucide-react';
 
 export const Layout = ({ children }) => {
@@ -32,7 +33,33 @@ export const Layout = ({ children }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [primaryContact, setPrimaryContact] = useState(null);
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
+  const [copiedSuccess, setCopiedSuccess] = useState(false);
+  const [showEncouragement, setShowEncouragement] = useState(false);
   const location = useLocation();
+
+  useEffect(() => {
+    const handleAppInstalled = () => {
+      setShowEncouragement(true);
+      localStorage.setItem('echoscribe_just_installed', 'true');
+    };
+    window.addEventListener('appinstalled', handleAppInstalled);
+    
+    if (localStorage.getItem('echoscribe_just_installed') === 'true') {
+      setShowEncouragement(true);
+    }
+    
+    return () => {
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleCopyNumber = (number) => {
+    navigator.clipboard.writeText(number)
+      .then(() => {
+        setCopiedSuccess(true);
+        setTimeout(() => setCopiedSuccess(false), 2000);
+      });
+  };
 
   const loadPrimaryContact = () => {
     const storedContacts = localStorage.getItem('emergencyContacts');
@@ -417,31 +444,36 @@ export const Layout = ({ children }) => {
         </Link>
       )}
 
-      {/* Floating Emergency Contact Button */}
+      {/* Floating Emergency SOS Button */}
       <button
         onClick={() => setShowEmergencyModal(true)}
-        className="floating-emergency-fab pulse"
+        className="floating-sos-button"
         style={{
           position: 'fixed',
-          backgroundColor: '#D90429',
+          backgroundColor: '#DC2626',
           color: '#FFFFFF',
           borderRadius: '50%',
-          width: '56px',
-          height: '56px',
+          width: '64px',
+          height: '64px',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          boxShadow: '0 4px 12px rgba(217, 4, 41, 0.4)',
-          zIndex: 199,
-          border: '2px solid #FFF',
-          cursor: 'pointer'
+          boxShadow: '0 0 0 0 rgba(220, 38, 38, 0.7), 0 4px 16px rgba(220, 38, 38, 0.4)',
+          zIndex: 999,
+          border: '3px solid #FFF',
+          cursor: 'pointer',
+          fontFamily: 'var(--font-display)',
+          fontWeight: '900',
+          transition: 'transform 0.15s ease'
         }}
-        aria-label="Quick Access Emergency Contact"
+        aria-label="Emergency SOS"
       >
-        <ShieldAlert size={26} />
+        <span style={{ fontSize: '13px', letterSpacing: '0.5px', lineHeight: '1' }}>SOS</span>
+        <Phone size={14} style={{ marginTop: '2px' }} />
       </button>
 
-      {/* High-Contrast Emergency Modal Overlay */}
+      {/* High-Contrast Emergency Modal Overlay (Emergency Panel) */}
       {showEmergencyModal && (
         <div style={{
           position: 'fixed',
@@ -463,7 +495,7 @@ export const Layout = ({ children }) => {
             width: '100%',
             maxWidth: '450px',
             backgroundColor: 'var(--bg-card)',
-            border: '3px solid #D90429',
+            border: '3px solid #DC2626',
             borderRadius: 'var(--radius-lg)',
             padding: '2rem',
             boxShadow: 'var(--shadow-lg)',
@@ -490,8 +522,8 @@ export const Layout = ({ children }) => {
                 width: '60px',
                 height: '60px',
                 borderRadius: '50%',
-                backgroundColor: 'rgba(217, 4, 41, 0.1)',
-                color: '#D90429',
+                backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                color: '#DC2626',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -500,23 +532,23 @@ export const Layout = ({ children }) => {
                 <ShieldAlert size={32} />
               </div>
               <h2 style={{ fontSize: 'var(--font-xl)', fontFamily: 'var(--font-display)', margin: 0, color: 'var(--color-text)' }}>
-                Emergency Contact Card
+                Emergency Contacts
               </h2>
             </div>
 
             {primaryContact ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', backgroundColor: 'var(--bg-secondary)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', marginBottom: '1.5rem', textAlign: 'center' }}>
                 <div style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                  Primary Contact
+                  Primary Emergency Contact
                 </div>
                 <div style={{ fontSize: 'var(--font-2xl)', fontWeight: 800, color: 'var(--color-text)' }}>
                   {primaryContact.name}
                 </div>
-                <div style={{ display: 'inline-block', alignSelf: 'center', backgroundColor: 'rgba(231, 111, 81, 0.08)', color: 'var(--color-primary)', padding: '4px 12px', borderRadius: 'var(--radius-full)', fontSize: 'var(--font-xs)', fontWeight: 'bold' }}>
+                <div style={{ display: 'inline-block', alignSelf: 'center', backgroundColor: 'rgba(220, 38, 38, 0.08)', color: '#DC2626', padding: '4px 12px', borderRadius: 'var(--radius-full)', fontSize: 'var(--font-xs)', fontWeight: 'bold' }}>
                   {primaryContact.relationship}
                 </div>
                 <div style={{ fontSize: 'var(--font-lg)', fontWeight: 'bold', color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                  <Phone size={18} style={{ color: '#D90429' }} />
+                  <Phone size={18} style={{ color: '#DC2626' }} />
                   {primaryContact.phone}
                 </div>
                 {primaryContact.notes && (
@@ -526,43 +558,79 @@ export const Layout = ({ children }) => {
                 )}
               </div>
             ) : (
-              <div style={{ padding: '1.5rem', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px dashed #D90429', marginBottom: '1.5rem', textAlign: 'center' }}>
-                <AlertTriangle size={32} style={{ color: '#D90429', marginBottom: '0.5rem' }} />
+              <div style={{ padding: '1.5rem', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px dashed #DC2626', marginBottom: '1.5rem', textAlign: 'center' }}>
+                <AlertTriangle size={32} style={{ color: '#DC2626', marginBottom: '0.5rem' }} />
                 <p style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-muted)', margin: 0 }}>
-                  No emergency contacts found.
+                  No primary emergency contact found.
                 </p>
               </div>
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {primaryContact ? (
-                <button 
-                  onClick={() => {
-                    const isMobileDevice = window.innerWidth <= 1024;
-                    if (isMobileDevice) {
+                <>
+                  <button 
+                    onClick={() => {
                       window.location.href = `tel:${primaryContact.phone}`;
-                    } else {
-                      alert(`Dialing contact number: ${primaryContact.phone}. This triggers direct calling on mobile.`);
-                    }
-                  }}
-                  className="btn btn-primary"
-                  style={{
-                    backgroundColor: '#D90429',
-                    borderColor: '#D90429',
-                    color: '#FFF',
-                    fontWeight: 'bold',
-                    fontSize: 'var(--font-md)',
-                    height: '50px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem',
-                    width: '100%',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <Phone size={18} /> CALL NOW
-                </button>
+                    }}
+                    className="btn btn-primary"
+                    style={{
+                      backgroundColor: '#DC2626',
+                      borderColor: '#DC2626',
+                      color: '#FFF',
+                      fontWeight: 'bold',
+                      fontSize: 'var(--font-md)',
+                      height: '56px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem',
+                      width: '100%',
+                      cursor: 'pointer',
+                      borderRadius: 'var(--radius-md)'
+                    }}
+                  >
+                    <Phone size={18} /> CALL NOW
+                  </button>
+
+                  <button 
+                    onClick={() => handleCopyNumber(primaryContact.phone)}
+                    className="btn btn-secondary"
+                    style={{
+                      fontWeight: 'bold',
+                      fontSize: 'var(--font-sm)',
+                      height: '50px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.5rem',
+                      width: '100%',
+                      cursor: 'pointer',
+                      borderRadius: 'var(--radius-md)'
+                    }}
+                  >
+                    {copiedSuccess ? 'Copied!' : 'Copy Number'}
+                  </button>
+
+                  <Link
+                    to="/emergency"
+                    onClick={() => setShowEmergencyModal(false)}
+                    className="btn btn-secondary"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 'bold',
+                      fontSize: 'var(--font-sm)',
+                      height: '50px',
+                      width: '100%',
+                      textDecoration: 'none',
+                      borderRadius: 'var(--radius-md)'
+                    }}
+                  >
+                    Change Contact
+                  </Link>
+                </>
               ) : (
                 <Link
                   to="/emergency"
@@ -573,9 +641,13 @@ export const Layout = ({ children }) => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontWeight: 'bold',
-                    height: '50px',
+                    height: '56px',
                     width: '100%',
-                    textDecoration: 'none'
+                    textDecoration: 'none',
+                    backgroundColor: '#DC2626',
+                    borderColor: '#DC2626',
+                    color: '#FFF',
+                    borderRadius: 'var(--radius-md)'
                   }}
                 >
                   Set Up Emergency Contacts
@@ -585,11 +657,84 @@ export const Layout = ({ children }) => {
               <button 
                 onClick={() => setShowEmergencyModal(false)} 
                 className="btn btn-secondary"
-                style={{ height: '50px', width: '100%', cursor: 'pointer' }}
+                style={{ height: '50px', width: '100%', cursor: 'pointer', borderRadius: 'var(--radius-md)' }}
               >
                 Close Card
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* PWA Post-Install Encouragement Modal */}
+      {showEncouragement && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(4px)',
+          WebkitBackdropFilter: 'blur(4px)',
+          zIndex: 10000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1.5rem',
+          animation: 'fadeIn 0.25s ease'
+        }}>
+          <div className="card animate-fade-in" style={{
+            width: '100%',
+            maxWidth: '450px',
+            backgroundColor: 'var(--bg-card)',
+            border: '3px solid var(--color-success)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '2rem',
+            boxShadow: 'var(--shadow-lg)',
+            position: 'relative',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              width: '60px',
+              height: '60px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(42, 157, 143, 0.1)',
+              color: 'var(--color-success)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '1rem'
+            }}>
+              <CheckCircle size={32} style={{ color: 'var(--color-success)' }} />
+            </div>
+            
+            <h2 style={{ fontSize: 'var(--font-xl)', fontFamily: 'var(--font-display)', marginBottom: '1rem', color: 'var(--color-text)' }}>
+              EchoScribe Installed!
+            </h2>
+            
+            <p style={{ fontSize: 'var(--font-sm)', color: 'var(--color-text-muted)', marginBottom: '1.5rem', lineHeight: '1.6' }}>
+              To ensure instant emergency calling under stress, we recommend placing EchoScribe on your **Home Screen**. 
+              Once added, you can also long-press the icon to drag the direct **Emergency** shortcut onto your home screen for one-tap safety access.
+            </p>
+            
+            <button 
+              onClick={() => {
+                setShowEncouragement(false);
+                localStorage.removeItem('echoscribe_just_installed');
+              }}
+              className="btn btn-primary"
+              style={{
+                width: '100%',
+                height: '50px',
+                fontWeight: 'bold',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'var(--color-success)',
+                borderColor: 'var(--color-success)'
+              }}
+            >
+              Got It, Thanks!
+            </button>
           </div>
         </div>
       )}
@@ -600,22 +745,38 @@ export const Layout = ({ children }) => {
           from { opacity: 0; }
           to { opacity: 1; }
         }
+        @keyframes pulse-sos {
+          0% {
+            box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6), 0 4px 12px rgba(220, 38, 38, 0.3);
+          }
+          70% {
+            box-shadow: 0 0 0 15px rgba(220, 38, 38, 0), 0 4px 12px rgba(220, 38, 38, 0.3);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(220, 38, 38, 0), 0 4px 12px rgba(220, 38, 38, 0.3);
+          }
+        }
         .floating-live-fab {
           bottom: 24px;
-          right: 24px;
-        }
-        .floating-emergency-fab {
-          bottom: 24px;
           left: 284px;
+        }
+        .floating-sos-button {
+          position: fixed;
+          bottom: 24px;
+          right: 24px;
+          animation: pulse-sos 2s infinite;
+        }
+        .floating-sos-button:active {
+          transform: scale(0.92);
         }
         @media (max-width: 1024px) {
           .floating-live-fab {
             bottom: 80px !important;
-            right: 16px !important;
-          }
-          .floating-emergency-fab {
-            bottom: 80px !important;
             left: 16px !important;
+          }
+          .floating-sos-button {
+            bottom: 80px !important;
+            right: 16px !important;
           }
           .mobile-header {
             display: flex !important;
