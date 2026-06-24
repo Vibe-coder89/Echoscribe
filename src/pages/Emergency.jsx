@@ -569,7 +569,7 @@ export const Emergency = () => {
               Home Screen Shortcut Support
             </h3>
             <p style={{ fontSize: 'var(--font-xs)', color: 'var(--color-text-muted)', lineHeight: '1.5', margin: '0 0 1rem 0' }}>
-              EchoScribe supports deep-link shortcuts. After installing the app, you can add an <strong>Emergency Link</strong> directly to your device home screen for instant one-tap access.
+              EchoScribe supports deep-link shortcuts. After installing the app, you can add an <strong>Emergency Link</strong> directly to your device home screen which opens your dialer directly.
             </p>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -601,7 +601,7 @@ export const Emergency = () => {
                 color: 'var(--color-text-muted)',
                 lineHeight: '1.4'
               }}>
-                <strong>How to add:</strong> Long-press the EchoScribe app icon on your home screen and drag the <strong>"Emergency"</strong> option onto your home screen.
+                <strong>How to add:</strong> Long-press the EchoScribe app icon on your home screen and drag the <strong>"Emergency"</strong> option onto your home screen. When tapped, it immediately launches your device dialer.
               </div>
             </div>
           </div>
