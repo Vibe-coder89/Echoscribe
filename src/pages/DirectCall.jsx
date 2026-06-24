@@ -1,6 +1,9 @@
 import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export const DirectCall = () => {
+  const navigate = useNavigate();
+
   useEffect(() => {
     const storedContacts = localStorage.getItem('emergencyContacts');
     const storedPrimaryId = localStorage.getItem('primaryEmergencyContactId');
@@ -19,15 +22,15 @@ export const DirectCall = () => {
         
         // Wait a brief moment to let the dialer open, then redirect the app back to safety hub
         setTimeout(() => {
-          window.location.replace('#/emergency');
+          navigate('/emergency', { replace: true });
         }, 1000);
       } else {
-        window.location.replace('#/emergency');
+        navigate('/emergency', { replace: true });
       }
     } else {
-      window.location.replace('#/emergency');
+      navigate('/emergency', { replace: true });
     }
-  }, []);
+  }, [navigate]);
 
   return (
     <div style={{
