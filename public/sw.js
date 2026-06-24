@@ -1,4 +1,4 @@
-const CACHE_NAME = 'echoscribe-v3';
+const CACHE_NAME = 'echoscribe-v4';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -72,21 +72,19 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Widget Click Event — Opens the phone dialer directly when widget is tapped
+// Widget Click Event — Focuses or opens the app window to the direct-call route
 self.addEventListener('widgetclick', (event) => {
   event.waitUntil(
-    caches.open('echoscribe-contacts').then((cache) => {
-      return cache.match('/api/primary-phone').then((response) => {
-        if (response) {
-          return response.text().then((phone) => {
-            // Open the dialer directly via tel protocol
-            return self.clients.openWindow(`tel:${phone}`);
-          });
-        } else {
-          // Fallback if no contact is cached: open the app's emergency route
-          return self.clients.openWindow('./index.html#/emergency');
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // If app window is already open, focus it and navigate to direct-call route
+      for (const client of windowClients) {
+        if (client.url.startsWith(self.location.origin)) {
+          client.navigate('./index.html#/direct-call');
+          return client.focus();
         }
-      });
+      }
+      // Otherwise, open a new app window directly to direct-call route
+      return self.clients.openWindow('./index.html#/direct-call');
     })
   );
 });

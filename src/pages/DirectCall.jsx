@@ -8,7 +8,7 @@ export const DirectCall = () => {
       const parsed = JSON.parse(storedContacts);
       const found = parsed.find(c => c.id === storedPrimaryId);
       if (found && found.phone) {
-        window.location.href = `tel:${found.phone}`;
+        window.location.replace(`tel:${found.phone}`);
       } else {
         window.location.replace('#/emergency');
       }
