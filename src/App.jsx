@@ -11,7 +11,6 @@ import { Analytics } from './pages/Analytics';
 import { History } from './pages/History';
 import { Accessibility } from './pages/Accessibility';
 import { Emergency } from './pages/Emergency';
-import { DirectCall } from './pages/DirectCall';
 import { SpeechTestPage } from './pages/SpeechTestPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -31,7 +30,6 @@ function App() {
               <Route path="/history" element={<History />} />
               <Route path="/accessibility" element={<Accessibility />} />
               <Route path="/emergency" element={<Emergency />} />
-              <Route path="/direct-call" element={<DirectCall />} />
               <Route path="/speech-test" element={<SpeechTestPage />} />
             </Routes>
           </Layout>

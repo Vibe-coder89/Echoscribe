@@ -115,9 +115,6 @@ export const Layout = ({ children }) => {
     setMobileMenuOpen(false);
   };
 
-  if (location.pathname === '/direct-call') {
-    return <>{children}</>;
-  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
