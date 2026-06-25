@@ -4,6 +4,7 @@ import { Phone, X } from 'lucide-react';
 
 export const DirectCall = () => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
   const [primaryContact, setPrimaryContact] = useState(null);
 
   useEffect(() => {
@@ -12,9 +13,16 @@ export const DirectCall = () => {
     if (storedContacts && storedPrimaryId) {
       const parsed = JSON.parse(storedContacts);
       const found = parsed.find(c => c.id === storedPrimaryId);
-      setPrimaryContact(found || null);
+      if (found) {
+        setPrimaryContact(found);
+        setLoading(false);
+      } else {
+        navigate('/emergency', { replace: true });
+      }
+    } else {
+      navigate('/emergency', { replace: true });
     }
-  }, []);
+  }, [navigate]);
 
   const handleCall = () => {
     if (primaryContact && primaryContact.phone) {
@@ -40,7 +48,7 @@ export const DirectCall = () => {
     navigate('/dashboard', { replace: true });
   };
 
-  if (!primaryContact) {
+  if (loading) {
     return (
       <div style={{
         display: 'flex',
